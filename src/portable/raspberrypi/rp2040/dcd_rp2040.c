@@ -529,17 +529,27 @@ void dcd_edpt_stall(uint8_t rhport, uint8_t ep_addr) {
   hwbuf_ctrl_set(buf_ctrl_reg, USB_BUF_CTRL_STALL);
 }
 
-void dcd_edpt_clear_stall(uint8_t rhport, uint8_t ep_addr) {
+void _dcd_edpt_clear_stall_int(uint8_t rhport, uint8_t ep_addr, bool soft) {
   (void) rhport;
 
   if (tu_edpt_number(ep_addr)) {
     struct hw_endpoint* ep = hw_endpoint_get_by_addr(ep_addr);
 
-    // clear stall also reset toggle to DATA0, ready for next transfer
-    ep->next_pid = 0;
+    if (!soft) {
+      // clear stall also reset toggle to DATA0, ready for next transfer
+      ep->next_pid = 0;
+    }
     io_rw_32 *buf_ctrl_reg = hwbuf_ctrl_reg_device(ep);
     hwbuf_ctrl_clear_mask(buf_ctrl_reg, USB_BUF_CTRL_STALL);
   }
+}
+
+void dcd_edpt_clear_stall(uint8_t rhport, uint8_t ep_addr) {
+  _dcd_edpt_clear_stall_int(rhport, ep_addr, false);
+}
+
+void dcd_edpt_clear_stall_soft(uint8_t rhport, uint8_t ep_addr) {
+  _dcd_edpt_clear_stall_int(rhport, ep_addr, true);
 }
 
 void __tusb_irq_path_func(dcd_int_handler)(uint8_t rhport) {

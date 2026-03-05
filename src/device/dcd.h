@@ -174,6 +174,11 @@ void dcd_edpt_stall           (uint8_t rhport, uint8_t ep_addr);
 // This API never calls with control endpoints, since it is auto cleared when receiving setup packet
 void dcd_edpt_clear_stall     (uint8_t rhport, uint8_t ep_addr);
 
+// clear stall, leave data toggle as is
+// This API never calls with control endpoints, since it is auto cleared when receiving setup packet
+void dcd_edpt_clear_stall_soft(uint8_t rhport, uint8_t ep_addr);
+
+
 #ifdef TUP_DCD_EDPT_CLOSE_API
 // Close an endpoint.
 void dcd_edpt_close(uint8_t rhport, uint8_t ep_addr);

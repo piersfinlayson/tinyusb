@@ -102,8 +102,14 @@ bool usbd_edpt_busy(uint8_t rhport, uint8_t ep_addr);
 // Stall endpoint
 void usbd_edpt_stall(uint8_t rhport, uint8_t ep_addr);
 
+// Stall endpoint and set it as unclaimed
+void usbd_edpt_stall_unclaim(uint8_t rhport, uint8_t ep_addr);
+
 // Clear stalled endpoint
 void usbd_edpt_clear_stall(uint8_t rhport, uint8_t ep_addr);
+
+// Clear stalled endpoint without resetting data toggle
+void usbd_edpt_clear_stall_soft(uint8_t rhport, uint8_t ep_addr);
 
 // Check if endpoint is stalled
 bool usbd_edpt_stalled(uint8_t rhport, uint8_t ep_addr);

@@ -1472,7 +1472,7 @@ bool usbd_edpt_busy(uint8_t rhport, uint8_t ep_addr) {
   return _usbd_dev.ep_status[epnum][dir].busy;
 }
 
-void usbd_edpt_stall(uint8_t rhport, uint8_t ep_addr) {
+static void _usbd_edpt_stall_int(uint8_t rhport, uint8_t ep_addr, bool unclaim) {
   rhport = _usbd_rhport;
 
   uint8_t const epnum = tu_edpt_number(ep_addr);
@@ -1483,19 +1483,42 @@ void usbd_edpt_stall(uint8_t rhport, uint8_t ep_addr) {
   dcd_edpt_stall(rhport, ep_addr);
   _usbd_dev.ep_status[epnum][dir].stalled = 1;
   _usbd_dev.ep_status[epnum][dir].busy = 1;
+  if (unclaim) {
+    _usbd_dev.ep_status[epnum][dir].claimed = 0;
+  }
 }
 
-void usbd_edpt_clear_stall(uint8_t rhport, uint8_t ep_addr) {
+void usbd_edpt_stall(uint8_t rhport, uint8_t ep_addr) {
+  _usbd_edpt_stall_int(rhport, ep_addr, false);
+}
+
+void usbd_edpt_stall_unclaim(uint8_t rhport, uint8_t ep_addr) {
+  _usbd_edpt_stall_int(rhport, ep_addr, true);
+}
+
+static void _usbd_edpt_clear_stall_int(uint8_t rhport, uint8_t ep_addr, bool soft) {
   rhport = _usbd_rhport;
 
   uint8_t const epnum = tu_edpt_number(ep_addr);
   uint8_t const dir = tu_edpt_dir(ep_addr);
 
   // only clear if currently stalled
-  TU_LOG_USBD("    Clear Stall EP %02X\r\n", ep_addr);
-  dcd_edpt_clear_stall(rhport, ep_addr);
+  TU_LOG_USBD("    Clear Stall EP %02X soft %d\r\n", ep_addr, soft);
+  if (soft) {
+    dcd_edpt_clear_stall_soft(rhport, ep_addr);
+  } else {
+    dcd_edpt_clear_stall(rhport, ep_addr);
+  }
   _usbd_dev.ep_status[epnum][dir].stalled = 0;
   _usbd_dev.ep_status[epnum][dir].busy = 0;
+}
+
+void usbd_edpt_clear_stall(uint8_t rhport, uint8_t ep_addr) {
+  _usbd_edpt_clear_stall_int(rhport, ep_addr, false);
+}
+
+void usbd_edpt_clear_stall_soft(uint8_t rhport, uint8_t ep_addr) {
+  _usbd_edpt_clear_stall_int( rhport, ep_addr, true);
 }
 
 bool usbd_edpt_stalled(uint8_t rhport, uint8_t ep_addr) {
