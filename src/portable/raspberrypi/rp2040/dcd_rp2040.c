@@ -536,8 +536,33 @@ void _dcd_edpt_clear_stall_int(uint8_t rhport, uint8_t ep_addr, bool soft) {
     struct hw_endpoint* ep = hw_endpoint_get_by_addr(ep_addr);
 
     if (!soft) {
-      // clear stall also reset toggle to DATA0, ready for next transfer
-      ep->next_pid = 0;
+      // CLEAR_FEATURE(ENDPOINT_HALT) has to leave the endpoint at DATA0 (USB
+      // 2.0 9.4.5).  Resetting next_pid alone only decides what the *next* arm
+      // uses - a buffer already armed keeps the PID it was armed with, and a
+      // class driver cannot correct it, because an armed endpoint cannot be
+      // claimed and its re-arm is silently dropped.  The device then waits for
+      // DATA1 while the host sends DATA0 and discards the packet as a repeat.
+      //
+      // An endpoint can be armed here whenever a transfer completed between
+      // the stall and the host clearing it, which for a protocol that stalls
+      // to refuse a command is the ordinary case.
+      //
+      // The armed packet is rewritten in place rather than taken back, so the
+      // driver's own transfer state is left alone.  AVAIL comes down first,
+      // per the concurrent access rule - 4.1.2.7.1 (rp2040), 12.7.3.7.1
+      // (rp2350).  next_pid is then 1, because the packet after the armed
+      // DATA0 one is DATA1.
+      io_rw_32 *bc_reg = hwbuf_ctrl_reg_device(ep);
+      const uint32_t bc = *bc_reg;
+      if (bc & USB_BUF_CTRL_AVAIL) {
+        const uint32_t fixed = bc & ~USB_BUF_CTRL_DATA1_PID;
+        *bc_reg = fixed & ~USB_BUF_CTRL_AVAIL;
+        busy_wait_at_least_cycles(12);
+        *bc_reg = fixed;
+        ep->next_pid = 1;
+      } else {
+        ep->next_pid = 0;
+      }
     }
     io_rw_32 *buf_ctrl_reg = hwbuf_ctrl_reg_device(ep);
     hwbuf_ctrl_clear_mask(buf_ctrl_reg, USB_BUF_CTRL_STALL);
