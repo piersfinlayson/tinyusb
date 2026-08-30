@@ -479,6 +479,7 @@
 #elif TU_CHECK_MCU(OPT_MCU_RP2040)
   #define TUP_DCD_ENDPOINT_MAX  16
   #define TUP_MCU_MULTIPLE_CORE 1
+  #define TUP_DCD_EDPT_ABORT_API
 
   #define TU_ATTR_FAST_FUNC     __not_in_flash("tinyusb")
 

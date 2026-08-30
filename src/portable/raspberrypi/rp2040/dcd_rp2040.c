@@ -529,6 +529,52 @@ void dcd_edpt_stall(uint8_t rhport, uint8_t ep_addr) {
   hwbuf_ctrl_set(buf_ctrl_reg, USB_BUF_CTRL_STALL);
 }
 
+#ifdef TUP_DCD_EDPT_ABORT_API
+bool dcd_edpt_abort_xfer(uint8_t rhport, uint8_t ep_addr) {
+  (void)rhport;
+  const uint8_t    epnum = tu_edpt_number(ep_addr);
+  const tusb_dir_t dir   = tu_edpt_dir(ep_addr);
+  hw_endpoint_t   *ep    = hw_endpoint_get(epnum, dir);
+
+  io_rw_32      *buf_ctrl_reg = hwbuf_ctrl_reg_device(ep);
+  const uint32_t buf_ctrl     = *buf_ctrl_reg;
+
+  // AVAIL is clear on a buffer the host has taken, so what is still set is
+  // exactly the packets that never went out - and each took a data toggle as
+  // prepare_ep_buffer filled it.
+  uint32_t armed = 0;
+  uint32_t mask  = 0;
+  if (buf_ctrl & USB_BUF_CTRL_AVAIL) {
+    armed++;
+    mask |= USB_BUF_CTRL_AVAIL;
+  }
+  if ((buf_ctrl >> 16) & USB_BUF_CTRL_AVAIL) {
+    armed++;
+    mask |= USB_BUF_CTRL_AVAIL << 16;
+  }
+  if (armed) {
+    // No settling time: that is for the write that hands a buffer over, and
+    // this one only brings AVAIL down.
+    hwbuf_ctrl_clear_mask(buf_ctrl_reg, mask);
+
+    // Every arm writes the register's PID field from this shadow, so the shadow
+    // is what goes back.  One packet withdrawn is one toggle, two is none.
+    ep->next_pid ^= (uint8_t)(armed & 1u);
+  }
+
+  // Both run even where nothing was armed, since usbd lets go of the endpoint
+  // either way and the port must not be left holding a transfer usbd forgot.
+  // The status bit goes after the withdrawal, because before it the controller
+  // can still raise one, and it has to go at all because
+  // hw_endpoint_reset_transfer clears ep->active and hw_endpoint_xfer_continue
+  // panics without it.
+  usb_hw_clear->buf_status = TU_BIT((epnum << 1) | (dir ? 0 : 1));
+  hw_endpoint_reset_transfer(ep);
+
+  return armed != 0;
+}
+#endif
+
 void _dcd_edpt_clear_stall_int(uint8_t rhport, uint8_t ep_addr, bool soft) {
   (void) rhport;
 

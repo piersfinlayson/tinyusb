@@ -1496,6 +1496,28 @@ void usbd_edpt_stall_unclaim(uint8_t rhport, uint8_t ep_addr) {
   _usbd_edpt_stall_int(rhport, ep_addr, true);
 }
 
+bool usbd_edpt_abort_xfer(uint8_t rhport, uint8_t ep_addr) {
+#ifdef TUP_DCD_EDPT_ABORT_API
+  rhport = _usbd_rhport;
+
+  uint8_t const epnum = tu_edpt_number(ep_addr);
+  uint8_t const dir = tu_edpt_dir(ep_addr);
+
+  TU_LOG_USBD("    Abort EP %02X\r\n", ep_addr);
+  bool const aborted = dcd_edpt_abort_xfer(rhport, ep_addr);
+
+  // The endpoint owes no completion either way, so the class driver is let go
+  // of it whether or not there was a transfer to take back.
+  _usbd_dev.ep_status[epnum][dir].busy = 0;
+  _usbd_dev.ep_status[epnum][dir].claimed = 0;
+  return aborted;
+#else
+  (void) rhport;
+  (void) ep_addr;
+  return false;
+#endif
+}
+
 static void _usbd_edpt_clear_stall_int(uint8_t rhport, uint8_t ep_addr, bool soft) {
   rhport = _usbd_rhport;
 

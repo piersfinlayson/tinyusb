@@ -179,6 +179,12 @@ void dcd_edpt_clear_stall     (uint8_t rhport, uint8_t ep_addr);
 void dcd_edpt_clear_stall_soft(uint8_t rhport, uint8_t ep_addr);
 
 
+#ifdef TUP_DCD_EDPT_ABORT_API
+// Take back a transfer the controller holds and the host has not collected.
+// Returns false where there was nothing to take back.
+bool dcd_edpt_abort_xfer(uint8_t rhport, uint8_t ep_addr);
+#endif
+
 #ifdef TUP_DCD_EDPT_CLOSE_API
 // Close an endpoint.
 void dcd_edpt_close(uint8_t rhport, uint8_t ep_addr);

@@ -105,6 +105,11 @@ void usbd_edpt_stall(uint8_t rhport, uint8_t ep_addr);
 // Stall endpoint and set it as unclaimed
 void usbd_edpt_stall_unclaim(uint8_t rhport, uint8_t ep_addr);
 
+// Take back a transfer the controller holds and the host has not collected, and
+// set the endpoint neither busy nor claimed.  Returns false where there was
+// nothing to take back, or where the port offers none.
+bool usbd_edpt_abort_xfer(uint8_t rhport, uint8_t ep_addr);
+
 // Clear stalled endpoint
 void usbd_edpt_clear_stall(uint8_t rhport, uint8_t ep_addr);
 
