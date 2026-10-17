@@ -97,6 +97,10 @@ extern volatile uint32_t e15_last_sof;
 
 void rp2usb_init(void);
 
+// Invoked by rp2usb_init() before it resets the USB controller.  Return false
+// to skip the reset, where the application has reset the controller itself.
+bool rp2usb_app_reset_cb(void);
+
 // if usb hardware is in host mode
 TU_ATTR_ALWAYS_INLINE static inline bool rp2usb_is_host_mode(void) {
   return (usb_hw->main_ctrl & USB_MAIN_CTRL_HOST_NDEVICE_BITS) ? true : false;

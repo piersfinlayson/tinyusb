@@ -63,20 +63,28 @@ void tu_hwfifo_read(const volatile void *hwfifo, uint8_t *dest, uint16_t len, co
   unaligned_memcpy(dest, (const uint8_t *)(uintptr_t)hwfifo, len);
 }
 
+TU_ATTR_WEAK bool rp2usb_app_reset_cb(void) {
+  return true;
+}
+
 void rp2usb_init(void) {
   // Reset usb controller
-  reset_block(RESETS_RESET_USBCTRL_BITS);
-  unreset_block_wait(RESETS_RESET_USBCTRL_BITS);
+  if (rp2usb_app_reset_cb()) {
+    reset_block(RESETS_RESET_USBCTRL_BITS);
+    unreset_block_wait(RESETS_RESET_USBCTRL_BITS);
+  }
 
 #ifdef __GNUC__
-  // Clear any previous state just in case
+  // Clear any previous state just in case.  Only the control structures ahead
+  // of the endpoint data buffers, so the rest of DPRAM keeps what is stored
+  // there.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
 #if __GNUC__ > 6
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #endif
 #endif
-  memset(usb_dpram, 0, sizeof(*usb_dpram));
+  memset(usb_dpram, 0, offsetof(usb_device_dpram_t, epx_data));
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
