@@ -53,6 +53,11 @@
 // HW buffer pointer from USB buffer space (max 3840 bytes)
 static uint8_t *hw_buffer_ptr;
 
+// Size of the device stack's USB DPRAM from offset 0.
+#ifndef CFG_TUD_RP2040_DPRAM_SIZE
+  #define CFG_TUD_RP2040_DPRAM_SIZE sizeof(usb_device_dpram_t)
+#endif
+
 // USB_MAX_ENDPOINTS Endpoints, direction TUSB_DIR_OUT for out and TUSB_DIR_IN for in.
 static struct hw_endpoint hw_endpoints[USB_MAX_ENDPOINTS][2];
 
@@ -88,14 +93,13 @@ static void hw_endpoint_init(hw_endpoint_t *ep, uint8_t ep_addr, uint16_t wMaxPa
     // round up size to multiple of 64
     uint16_t size = (uint16_t)tu_round_up(wMaxPacketSize, 64);
 
-    // double buffered Bulk endpoint
-    if (transfer_type == TUSB_XFER_BULK) {
+    // Double buffered Bulk IN endpoint.  OUT endpoints are single buffered
+    // in device mode.  See hw_endpoint_start_next_buffer().
+    if (transfer_type == TUSB_XFER_BULK && tu_edpt_dir(ep_addr) == TUSB_DIR_IN) {
       size *= 2u;
 
   #if TUD_OPT_RP2040_USB_DEVICE_UFRAME_FIX
-      if (tu_edpt_dir(ep_addr) == TUSB_DIR_IN) {
-        ep->e15_bulk_in = true;
-      }
+      ep->e15_bulk_in = true;
   #endif
     }
 
@@ -103,7 +107,7 @@ static void hw_endpoint_init(hw_endpoint_t *ep, uint8_t ep_addr, uint16_t wMaxPa
     ep->hw_data_buf = hw_buffer_ptr;
     hw_buffer_ptr += size;
 
-    hard_assert(hw_buffer_ptr < usb_dpram->epx_data + sizeof(usb_dpram->epx_data));
+    hard_assert(hw_buffer_ptr <= (uint8_t *)usb_dpram + CFG_TUD_RP2040_DPRAM_SIZE);
     pico_info("  Allocated %d bytes (0x%p)\r\n", size, ep->hw_data_buf);
   }
 }
